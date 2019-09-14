@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <title>Dragon Capture</title>
+
+    <style>
+        body {
+            background-color: black;
+            overflow: hidden;
+        }
+
+        #canvasDiv {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            position: absolute;
+        }
+
+        .loader,
+        .loader:after {
+        border-radius: 50%;
+        width: 10em;
+        height: 10em;
+        }
+        .loader {
+        margin: 60px auto;
+        font-size: 10px;
+        position: relative;
+        text-indent: -9999em;
+        border-top: 1.1em solid rgba(255, 255, 255, 0.2);
+        border-right: 1.1em solid rgba(255, 255, 255, 0.2);
+        border-bottom: 1.1em solid rgba(255, 255, 255, 0.2);
+        border-left: 1.1em solid #ffffff;
+        -webkit-transform: translateZ(0);
+        -ms-transform: translateZ(0);
+        transform: translateZ(0);
+        -webkit-animation: load8 1.1s infinite linear;
+        animation: load8 1.1s infinite linear;
+        }
+        @-webkit-keyframes load8 {
+        0% {
+            -webkit-transform: rotate(0deg);
+            transform: rotate(0deg);
+        }
+        100% {
+            -webkit-transform: rotate(360deg);
+            transform: rotate(360deg);
+        }
+        }
+        @keyframes load8 {
+        0% {
+            -webkit-transform: rotate(0deg);
+            transform: rotate(0deg);
+        }
+        100% {
+            -webkit-transform: rotate(360deg);
+            transform: rotate(360deg);
+        }
+        }
+    </style>
+<script id="vertex-shader" type="x-shader/x-vertex">
+uniform mat4 uModelViewMatrix;
+uniform mat4 uProjectionMatrix;
+uniform mat4 uNormalMatrix;
+uniform mat4 uTextureMatrix;
+
+attribute vec4 aPosition;
+attribute vec3 aNormal;
+attribute vec2 aTexCoord;
+
+varying vec3 vPosition;
+varying vec3 vNormal;
+varying vec3 vTexCoord;
+
+void main() {
+    vPosition = (uModelViewMatrix * aPosition).xyz;
+    vNormal = (uNormalMatrix * vec4(aNormal, 0.0)).xyz;
+    if (uTextureMatrix[3][3] == 0.0) { // standard texture mapping
+        vTexCoord = vec3(aTexCoord, 0.0);
+    } else { // cylindrical texture mapping
+        vTexCoord = (uTextureMatrix * aPosition).xyz;
+    }
+    gl_Position = uProjectionMatrix * vec4(vPosition, 1.0);
+}
+</script>
+<script id="fragment-shader" type="x-shader/x-fragment">
+#define LIGHT_COUNT 9
+
+precision highp float;
+
+uniform mat4 uViewMatrix;
+uniform mat4 uTextureMatrix;
+uniform sampler2D uTexture;
+uniform vec4 uLightPosition[LIGHT_COUNT];
+uniform vec4 uAmbient[LIGHT_COUNT];
+uniform vec4 uDiffuse[LIGHT_COUNT];
+uniform vec4 uSpecular[LIGHT_COUNT];
+uniform float uShininess[LIGHT_COUNT];
+uniform vec4 uGlow;
+
+varying vec3 vPosition;
+varying vec3 vNormal;
+varying vec3 vTexCoord;
+
+void main() {
+    vec4 c0 = vec4(0.0);
+    vec4 c1 = vec4(0.0);
+    vec3 E = normalize(-vPosition);
+    vec3 N = normalize(vNormal);
+    for (int i = 0; i < LIGHT_COUNT; i++) {
+        vec3 lightPos = (uViewMatrix * uLightPosition[i]).xyz;
+        // Normalized vector from pos to light
+        vec3 L = normalize(lightPos - vPosition);
+        // Compute halfway vector
+        vec3 H = normalize(L + E);
+        // Compute terms in the illumination equation
+        float Kd = max(dot(L, N), 0.0);
+        vec4 diffuse = Kd * uDiffuse[i];
+        float Ks = pow(max(dot(N, H), 0.0), uShininess[i]);
+        vec4 specular = Ks * uSpecular[i];
+        if (dot(L, N) < 0.0) {
+            specular = vec4(0.0, 0.0, 0.0, 1.0);
+        }
+        c0 += uAmbient[i] + diffuse;
+        c1 += specular;
+    }
+    vec2 texCoord = vTexCoord.xy;
+    if (uTextureMatrix[3][3] != 0.0) { // cylindrical texture mapping
+        texCoord.x = atan(vTexCoord.z, vTexCoord.x) / 6.2831853 + 0.5;
+    }
+    gl_FragColor = mix((c0 * texture2D(uTexture, texCoord)), vec4(uGlow.rgb, 1.0), uGlow.a * (1.0 - N.z)) + c1;
+}
+</script>
+
+<!--Ed Angel WebGL support libraries-->
+
+</head>
+
+
+<body>
+    <div class="loader">
+        <div id="canvasDiv">
+                <canvas id="2d-canvas" style="z-index:1;" ></canvas>
+                <canvas id="gl-canvas" style="z-index:0;">Oops ... your browser doesn't
+                    support the HTML5 canvas element
+                </canvas>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="Common/webgl-utils.js"></script>
+    <script type="text/javascript" src="Common/initShaders.js"></script>
+    <script type="text/javascript" src="Common/MV.js"></script>
+    <script type="text/javascript" src="Common/webgl-debug.js"></script>
+    <script type="text/javascript" src="models/explosionModel.js"></script>
+    <script type="text/javascript" src="models/fireModel.js"></script>
+    <script type="text/javascript" src="models/dragonModel.js"></script>
+    <script type="text/javascript" src="models/Cloud1Model.js"></script>
+    <script type="text/javascript" src="models/Cloud2Model.js"></script>
+    <script type="text/javascript" src="models/Cloud3Model.js"></script>
+    <script type="text/javascript" src="models/Cloud4Model.js"></script>
+    <script type="text/javascript" src="models/pedestalModel.js"></script>
+    <script type="text/javascript" src="models/ratModel.js"></script>
+    <script type="text/javascript" src="models/pedestalv2.js"></script>
+    <script type="text/javascript" src="models/sphereGrid.js"></script>
+    <script type="text/javascript" src="models/smallRockModel.js"></script>
+    <script type="text/javascript" src="models/rocketModel.js"></script>
+    <script type="text/javascript" src="Utilities.js"></script>
+    <script type="text/javascript" src="GameObject.js"></script>
+    <script type="text/javascript" src="Rocket.js"></script>
+    <script type="text/javascript" src="dragon.js"></script>
+    <script type="text/javascript" src="sun.js"></script>
+    <script type="text/javascript" src="Cloud.js"></script>
+    <script type="text/javascript" src="rat.js"></script>
+    <script type="text/javascript" src="Pedestal.js"></script>
+    <script type="text/javascript" src="Arena.js"></script>
+    <script type="text/javascript" src="Cylinders.js"></script>
+    <script type="text/javascript" src="Rock.js"></script>
+    <script type="text/javascript" src="Hero.js"></script>
+    <script type="text/javascript" src="Villain.js"></script>
+    <script type="text/javascript" src="the-game.js"></script>
+    <script>
+        const node = document.getElementsByClassName('loader')[0];
+        node.replaceWith(...node.childNodes); // or node.children, if you don't want textNodes
+    </script>
+
+
+</body>
+
+</html>
