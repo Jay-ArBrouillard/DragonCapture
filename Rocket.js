@@ -19,7 +19,7 @@ Rocket.prototype.update = function (inMotion) {
     rocketHeight = _.y;
     if (_.y < 9) {  //Rise rocket from floor
         _.y += 0.05;
-        _.degrees += 1;
+        _.zRotation += 1;
     } 
 
     if (inMotion != null) {
@@ -65,7 +65,7 @@ Rocket.prototype.show2 = function () {
 };
 Rocket.prototype.show = function (degrees) {
     const _ = this;
-    const d = _.degrees; // save degrees
+    const d = _.zRotation; // save degrees
     _.degrees = degrees+2; // rotate mesh faster than normal
     GameObj2.prototype.show.call(this); // show
     _.degrees = d; // restore degrees
@@ -109,7 +109,7 @@ Fire.prototype.update = function () {
 
 Fire.prototype.show = function (degrees) {
     const _ = this;
-    const d = _.degrees; // save degrees
+    const d = _.zRotation; // save degrees
     _.degrees = degrees+1; // rotate mesh faster than normal
     GameObj2.prototype.show.call(this); // show
     _.degrees = d; // restore degrees
