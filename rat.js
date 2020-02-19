@@ -4,7 +4,7 @@ function Rat(x, y, z, degrees, texSrc) {
     _.scale = 0.9;
     _.mesh = ratMesh;
     _.texture = loadTexture(texSrc);
-    _.textureMatrix = mult(rotateZ(180), scalem(1, 1, 1/10)); // cylindrical texture mapping
+    _.textureMatrix = mult(rotateY(180), scalem(1, 1, 1/10)); // cylindrical texture mapping
     _.boosterCounter = 0;
     _.glow = [1.0,0.0,0.0, 0.0]; // red Color, off
 

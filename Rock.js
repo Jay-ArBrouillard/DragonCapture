@@ -73,19 +73,10 @@ Rock.prototype.update = function (inMotion) {
             G.objects.rocket.rocket.update(true);
         }
 
+
         //Collide with Dragon
         if (_.isCollide(G.objects.target)) {
             G.objects.target.health -= 1;
-        }
-
-        //Collide with wall
-        // bounce left or right wall
-        if ((_.x < 0 + _.bounding_cir_rad) || (_.x > K.arenaSize - _.bounding_cir_rad)) {
-            _.x = clamp(_.x, 0 + _.bounding_cir_rad, K.arenaSize - _.bounding_cir_rad);
-        }
-        // bounce top or bottom wall
-        if ((_.z < 0 + _.bounding_cir_rad) || (_.z > K.arenaSize - _.bounding_cir_rad)) {
-            _.z = clamp(_.z, 0 + _.bounding_cir_rad, K.arenaSize - _.bounding_cir_rad);
         }
     }
 
