@@ -1,12 +1,10 @@
-function GameObject(program, x, y, z, degrees, bounding_cir_rad, ) {
+function GameObject(program, x, y, z, degrees, bounding_cir_rad) {
     this.health = 3;
     this.x = x;
     this.y = y;
     this.z = z;
-    this.degrees = degrees; 
-    this.normalDegrees = degrees;
-    this.degreesX;
-    this.degreesZ;
+    this.degrees = degrees;
+    this.normalDegrees = degrees
     this.xdir = Math.cos(this.degrees * Math.PI / 180.0);
     this.zdir = Math.sin(this.degrees * Math.PI / 180.0);
     this.bounding_cir_rad = bounding_cir_rad;
@@ -44,18 +42,7 @@ GameObj2.prototype.show = function () {
     gl.bindTexture(gl.TEXTURE_2D, _.texture);
     let m = G.program.viewMatrix;
     m = mult(m, translate(_.x, _.y, _.z));
-    if (_ == G.objects.hero || _ == G.objects.villain) {
-        m = mult(m, rotateY(-90));
-    } else if (_ == G.objects.target) {
-        m = mult(m, rotateY(180));
-    }
-    if (_.degreesX != null) {
-        m = mult(m, rotateX(_.degreesX));
-    }
-    if (_.degreesZ != null) {
-        m = mult(m, rotateX(_.degreesZ));
-    }
-    m = mult(m, rotateY(-_.degrees));
+    m = mult(m, rotateY(_.degrees));
     m = mult(m, _.scaleMatrix || scalem(_.scale, _.scale, _.scale));
     gl.uniformMatrix4fv(G.program.u.modelViewMatrix, false, flatten(m));
     m = transpose(inverse(m));
@@ -109,7 +96,9 @@ GameObj2.prototype.isCollide = function (that, cloudIndex) {
         }
 
         if (that == G.objects.booster0 || that == G.objects.booster1 || that == G.objects.booster2 || that == G.objects.booster3 || that == G.objects.booster4) {
-            return (length([that.x - this.x, that.z - this.z]) < that.bounding_cir_rad + this.bounding_cir_rad) && that.y >= -1;
+            const cMax = that.y + that.height/2;
+            const cMin = that.y - that.height/2;
+            return (length([that.x - this.x, that.z - this.z]) < that.bounding_cir_rad + this.bounding_cir_rad) && that.y >= -0.5;
         }
 
         if (this == G.objects.target && that == G.objects.clouds[cloudIndex]) {

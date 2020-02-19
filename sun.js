@@ -4,7 +4,7 @@ function Sun(x, y, z, degrees, texSrc) {
     _.scale = 5.0;
     _.mesh = sphereGridMesh;
     _.texture = loadTexture(texSrc);
-    _.textureMatrix = mult(rotateZ(90), scalem(1, 1/10, 1)); // cylindrical texture mapping
+    _.textureMatrix = mult(rotateY(90), scalem(1, 1/10, 1)); // cylindrical texture mapping
 };
 
 Sun.prototype = Object.create(GameObj2.prototype);

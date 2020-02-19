@@ -20,20 +20,20 @@ var gl;
 var swapPerspective = false;
 var killedWithDragon;
 // constants
-const K = {
+var K = {
     arenaSize: 300,
     wallHeight: 20,
     speed: {
         hero: 0.6,
         villain: 0.6,
-        dragon: 0.6,
+        dragon: 0.2,
         rats: 0.3,
         clouds: 0.05,
         carryMul: 0.75,
         boostMul: 2,
         turn: 2,
     },
-    aiSmartTurn: false,
+    aiSmartTurn: true,
     bumpDistance: 4,
     time: {
         pow: 30,
@@ -105,13 +105,6 @@ var G = {
         villainGoalBottom: null,
         villainGoalTop: null,
         target: null,
-        fireAttacks: {
-            attacks: [],
-            heightDecrement: [],
-            inMotion: [],
-            aim: [],
-            target: [],
-        },
         booster0: null,
         booster1: null,
         booster2: null,
@@ -146,6 +139,7 @@ var G = {
     pause: false,
     boosters: null,
     shrinkDragon: false,
+    teleportThreshold: 1.0,
     dragonScale: 100,
     numBoosts: 5,
     pow: {
@@ -165,7 +159,6 @@ var G = {
     ironManImage: null,
     thanosImage: null,
     heartImage: null,
-    fireBallImage: null,
     heroSound: null,
     villainSound: null,
     teleportSound: null,
@@ -179,23 +172,7 @@ var G = {
     explosionSound: null,
     ratsMove: false,
     explosionDone: false,
-    fireAttackAmmo: [],
-    //Section to keep track of scoreBoard data
-    teleportThreshold: 1.0,
-    teleportStatus: null,
-    fireBallStatus: null,
-    prevHeroHealth: 3,
-    prevVillainHealth: 3,
-    prevDragonHealth: 3,
-    prevBoostCount: 3,
-    prevHeroScore: 0,
-    prevVillainScore: 0,
-    prevTeleportStatus: null,
-    prevFireAttacksReady: null,
-
-
 };
-let _1stTime = true;
 window.onload = function () {
     G.canvasDiv = document.getElementById("canvasDiv");
     G.canvasDiv.oldWidth = 0;
@@ -229,7 +206,6 @@ window.onload = function () {
     G.ironManImage = loadImage("assets/ironmanImage.png");
     G.thanosImage = loadImage("assets/thanosImage.png");
     G.heartImage = loadImage("assets/pixelHeart.png");
-    G.fireBallImage = loadImage("assets/fireBall.png");
     // initialize game
     G.squelchSound = new Audio("sounds/squelch.mp3");
     villainSound = new Audio("sounds/VillainDied.mp3");
@@ -376,13 +352,13 @@ function init() {
         }
 
         G.objects.rats = new Rat(G.objects.pedestal.x, 0, G.objects.pedestal.z, 0, "assets/ratTexture.png");
-        G.objects.hero = new Hero(24, 0, K.arenaSize, 0, "assets/hero.png");
+        G.objects.hero = new FuelCarrier(24, 0, K.arenaSize, 0, "assets/hero.png");
         G.objects.heroGoalBottom = new Cylinder10uR(12, -11.9, K.arenaSize / 2, 180, "assets/BarrierBlue.png");
         G.objects.heroGoalTop = new Cylinder10uR(12, 4, K.arenaSize / 2, 180, "assets/BarrierBlue.png");
-        G.objects.villain = new Villain(K.arenaSize - 24, 0.0, K.arenaSize / 2, 180, "assets/villain.png");
+        G.objects.villain = new FuelCarrier(K.arenaSize - 24, 0.0, K.arenaSize / 2, 180, "assets/villain.png");
         G.objects.villainGoalBottom = new Cylinder10uR(K.arenaSize - 12, -11.9, K.arenaSize / 2, 0, "assets/BarrierRed.png");
         G.objects.villainGoalTop = new Cylinder10uR(K.arenaSize - 12, 4, K.arenaSize / 2, 0, "assets/BarrierRed.png");
-        G.objects.target = new Dragon(150, Math.floor(Math.random() * 10) + 30, 150, 0, "assets/rainbowSpiral.png");
+        G.objects.target = new Dragon(150, Math.floor(Math.random() * 10) + 30, 150, Math.random() * 360, "assets/rainbowSpiral.png", 100);
 
         var numClouds = Math.floor(Math.random() * 10) + 5;
         for (var i = 0; i < numClouds; i++) {
@@ -456,7 +432,7 @@ function dropObject() {
         const dropX = G.objects.hero.x - Math.sin(radians(G.heroSpin)) * (G.objects.hero.bounding_cir_rad + 5);
         const dropZ = G.objects.hero.z - Math.cos(radians(G.heroSpin)) * (G.objects.hero.bounding_cir_rad + 5);
         G.objects.hero.fuelCell = null;
-        G.objects.target = new Dragon(dropX, 0, dropZ, 0, "assets/rainbowSpiral.png");
+        G.objects.target = new Dragon(dropX, 0, dropZ, Math.random() * 360, "assets/rainbowSpiral.png", 20);
         G.objects.target.scale = 20;
     } else if (G.objects.hero.fuelCell == G.objects.rock.rock) {
         G.objects.rock.inMotion = true;
@@ -562,8 +538,14 @@ function reset(frameCounter, targetPos, hero, villain, booster, dragon) {
         G.objects.target.update(false, true);
         G.objects.target.scale = 100;
         G.teleportThreshold = 1.0;
-        G.objects.target = new Dragon(Math.random() * (K.arenaSize / 2), Math.floor(Math.random() * 10) + 30, Math.random() * (K.arenaSize / 2), 0, "assets/rainbowSpiral.png", G.objects.target.scale); 
+        G.objects.target = new Dragon(Math.random() * (K.arenaSize / 2), Math.floor(Math.random() * 10) + 30, Math.random() * (K.arenaSize / 2), Math.random() * 360, "assets/rainbowSpiral.png", G.objects.target.scale); 
     }
+	else {
+		G.teleportThreshold += 0.1;
+	}
+	
+	//Everytime something is reset give the dragon back some teleport threshold
+	
 
 }
 
@@ -579,6 +561,7 @@ function update() {
             K.display321 = false;
         }
     }
+
     //Respawn boosts after 10 game seconds
     if ((G.fps.i % (10 * 60)) == 0) {
         for (var i = 0; i < G.boosters.length; i++) {
@@ -637,17 +620,18 @@ function update() {
 
 
     //Evade and Movement for Dragon AI/////////
-   /* if (G.objects.hero.fuelCell == null && G.objects.villain.fuelCell == null) {
+    if (G.objects.hero.fuelCell == null && G.objects.villain.fuelCell == null) {
         var targetToHero = distance(G.objects.hero.x, G.objects.hero.z, G.objects.target.x, G.objects.target.z);
         var targetToVillain = distance(G.objects.villain.x, G.objects.villain.z, G.objects.target.x, G.objects.target.z);
         var rand = Math.floor(Math.random() * 8);    //0, 1, 2, 3, 4, 5, 6, 7 for N, NE, E, SE, S, SW, W, NW
         const directions = ["North", "NorthEast", "East", "SouthEast", "South", "SouthWest", "West", "NorthWest"];
         var dir = directions[rand];
         var dragonMove;
+		//How far should the dragon evade from you
         G.objects.target.scale == 100 ? dragonMove = 15 : dragonMove = 5;
-        if (G.objects.target.y <= 0 && Math.random() < G.teleportThreshold) {
+        if (G.objects.target.y <= 0 && Math.random() < G.teleportThreshold && Math.random() < G.teleportThreshold && Math.random() < G.teleportThreshold) {
             var dist;
-            dragonMove == 15 ? dist = 16 : dist = 6;
+            dragonMove == 15 ? dist = 16 : dist = 5;
             if (dragonMove == 15 && targetToHero <= dist || dragonMove == 5 && targetToHero <= dist) {
                 if (G.objects.hero.boosterCounter == 0) {   //Hero isn't carrying boost
                     teleportSound.play();
@@ -682,7 +666,7 @@ function update() {
                             break;
                     }
                     G.objects.target.degrees = Math.random() * 360;
-                    G.teleportThreshold -= 0.02;
+                    G.teleportThreshold -= 0.1;
                 }
             } else if (dragonMove == 15 && targetToVillain <= dist || dragonMove == 5 && targetToVillain <= dist) {
                 if (G.objects.villain.boosterCounter == 0) { //Villain isn't carrying boost
@@ -719,11 +703,11 @@ function update() {
                             break;
                     }
                     G.objects.target.degrees = Math.random() * 360;
-                    G.teleportThreshold -= 0.02;
+                    G.teleportThreshold -= 0.1;
                 }
             }
         }
-    }*/
+    }
     //////////////////////////// end Dragon AI//////////////////
 
     // collide
@@ -745,6 +729,9 @@ function update() {
             G.confetti.onDone = function () {
                 reset(true, true, false, false, false, true);
             };
+			//Dragon get faster if hero scores
+			K.speed.dragon += 0.5;
+
         }
         else if (G.objects.villain.isCollide(G.objects.hero)) {
             // hero attacked
@@ -769,12 +756,14 @@ function update() {
             G.objects.target.y = 10;
             G.score.villain++;
             G.objects.target = G.objects.villain.fuelCell;
-            G.objects.villain.fuelCell = null;
+            G.objects.villain.fuelCell = null;;
             G.confetti.counter = K.time.confetti;
             G.objects.target.captured = false;
             G.confetti.onDone = function () {
                 reset(true, true, false, false, false, true);
             };
+			//Dragon get faster if villain scores
+			K.speed.dragon += 0.5;
 
         }
         else if (G.objects.villain.isCollide(G.objects.hero)) {
@@ -856,14 +845,10 @@ function update() {
 }
 
 function draw() {
-    //Notes
-    //Only redraw canvas if the width and/or height of the client changed
     resizeCanvas();
-    //Only redraw overlay if a player won, display 3 2 1, confetti/pow, and for game pause
     drawOverlay();
-    //Only redraw Board if someone scores, 
     drawBoard();
-    draw3d();   //Do this everyframe
+    draw3d();
 }
 
 function resizeCanvas() {
@@ -952,7 +937,6 @@ function drawOverlay() {
         g.drawImage(G.pow.image, (width - side) / 2, (height - side) / 2, side, side);
     } else if (G.confetti.counter > 0) {
         g.drawImage(G.confetti.image, 0, height * (1 - G.confetti.counter / K.time.confetti), width, G.confetti.image.height * width / G.confetti.image.width);
-        _1stTime = true;
     }
 
     if (G.pause) {
@@ -966,7 +950,6 @@ function drawOverlay() {
         g.textBaseline = `middle`;
         g.fillText("PAUSE", width / 2, height / 2);
     }
-
 }
 
 function drawBoard() {
@@ -975,119 +958,60 @@ function drawBoard() {
     const height = G.canvas2.height - G.canvas.height;
     const top = G.canvas2.height - height;
     const fontSize = document.documentElement.clientWidth * 0.022;
-    // teleportThreshold: 1.0,
-    // teleportStatus: null,
-    // fireBallStatus: null,
-    // prevHeroHealth: 3,
-    // prevVillainHealth: 3,
-    // prevDragonHealth: 3,
-    // prevBoostCount: 3,
-    // prevHeroScore: 0,
-    // prevVillainScore: 0,
 
-    if (_1stTime || G.numBoosts != G.prevBoostCount || G.objects.hero.health != G.prevHeroHealth || G.objects.villain.health != G.prevVillainHealth || G.objects.target.health != G.prevDragonHealth || 
-        G.teleportStatus != G.prevTeleportStatus || (G.fireAttackAmmo == 0 && G.prevFireAttacksReady != 0) || (G.fireAttackAmmo != 0 && G.prevFireAttacksReady == 0)) {
-        _1stTime = false;
-        G.prevHeroHealth = G.objects.hero.health;
-        G.prevVillainHealth = G.objects.villain.health;
-        G.prevDragonHealth = G.objects.target.health;
-        G.prevTeleportStatus = G.teleportStatus;
-        G.prevFireAttacksReady = G.fireAttackAmmo;
-        G.prevBoostCount = G.numBoosts;
+    g.globalAlpha = 1.0;
+    g.fillStyle = "#000";
+    g.drawImage(G.overlay, 0, top, width, height);
+    g.drawImage(G.boostImage, width*0.375, top, width *0.05, height);
+    g.drawImage(G.dragonImage, width*0.675, top, width *0.05, height);
+    g.drawImage(G.ironManImage, width*0.01, top, width *0.05, height);
+    g.drawImage(G.thanosImage, width*0.45, top, width *0.05, height);
+    for (var i = 0; i < G.objects.target.health; i++) {
+        g.drawImage(G.rainbowHeartImage, width*(0.72 + i*0.03), top+height*0.25, width *0.025, height/2);
+    }
+    for (var i = 0; i < G.objects.hero.health; i++) {
+        g.drawImage(G.heartImage, width*(0.06 + i*0.03), top+height*0.25, width *0.025, height/2);
+    }
+    for (var i = 0; i < G.objects.villain.health; i++) {
+        g.drawImage(G.heartImage, width*(0.51 + i*0.03), top+height*0.25, width *0.025, height/2);
+    }
+    g.font = height + "px consolas,monospace";
+    g.textBaseline = `top`;
+    g.textAlign = `right`;
+    g.fillStyle = "#55F";
+    g.fillText(`${G.score.villain}`, width * 0.66, top);
+    g.textAlign = `left`;
+    g.fillStyle = "#F55";
+    g.fillText(`${G.score.hero}`, width * 0.33, top);
+    g.font = Math.floor(fontSize / 1.5) + "px consolas,monospace"
+    g.fillText(`Thanos Proximity: ${Math.floor(distance(G.objects.hero.x, G.objects.hero.z, G.objects.villain.x, G.objects.villain.z)-3)}`, width * 0.15, top);
+    g.font = Math.floor(fontSize / 2) + "px consolas,monospace";
+    g.fillStyle = "#FFF";
+    g.fillText(`Teleport Chance`, width*0.82, top+height*0.1);
+    g.font = Math.floor(fontSize) + "px consolas,monospace"
+    if (G.teleportThreshold >= 0.75) {
+        g.fillStyle = "#FF0000";
+        g.fillText(`High`, width*0.82, top+height*0.25);
+    } else if (G.teleportThreshold >= 0.5) {
+        g.fillStyle = "#FF4500";
+        g.fillText(`Moderate`, width*0.82, top+height*0.25);
+    } else if (G.teleportThreshold > 0.25) {
+        g.fillStyle = "#FF0000";
+        g.fillText(`Low`, width*0.82, top+height*0.25);
+    } else {
+        g.fillStyle = "#008000";
+        g.fillText(`Very Low`, width*0.82, top+height*0.25);
+    }
+    g.fillStyle = "#8eff55";
+    g.fillText(` x${G.numBoosts}`, width * 0.4, top + height * 0.33);
 
-        g.clearRect(0, top, width, height);
-        g.globalAlpha = 1.0;
-        g.fillStyle = "#000";
-        g.drawImage(G.overlay, 0, top, width, height);
-        g.drawImage(G.boostImage, width*0.375, top, width *0.05, height);
-        g.drawImage(G.dragonImage, width*0.675, top, width *0.05, height);
-        g.drawImage(G.ironManImage, width*0.01, top, width *0.05, height);
-        g.drawImage(G.thanosImage, width*0.45, top, width *0.05, height);
-        g.textBaseline = `top`;
-        g.textAlign = `left`;
-        g.font = Math.floor(fontSize) + "px consolas,monospace";
-        g.fillStyle = "#228B22";
-        g.fillText(`Teleport`, width*0.82, top+height*0.1);
-        
-        for (var i = 0; i < G.objects.target.health; i++) {
-            g.drawImage(G.rainbowHeartImage, width*(0.72 + i*0.03), top+height*0.25, width *0.025, height/2);
-        }
-        for (var i = 0; i < G.objects.hero.health; i++) {
-            g.drawImage(G.heartImage, width*(0.06 + i*0.03), top+height*0.25, width *0.025, height/2);
-        }
-        for (var i = 0; i < G.objects.villain.health; i++) {
-            g.drawImage(G.heartImage, width*(0.51 + i*0.03), top+height*0.25, width *0.025, height/2);
-        }
-        g.font = height + "px consolas,monospace";
-        g.textBaseline = `top`;
-        g.textAlign = `right`;
-        g.fillStyle = "#55F";
-        g.fillText(`${G.score.villain}`, width * 0.66, top);
-        g.textAlign = `left`;
-        g.fillStyle = "#F55";
-        g.fillText(`${G.score.hero}`, width * 0.33, top);
-        // g.font = Math.floor(fontSize / 1.5) + "px consolas,monospace"
-        // //g.fillText(`Thanos Proximity: ${Math.floor(distance(G.objects.hero.x, G.objects.hero.z, G.objects.villain.x, G.objects.villain.z)-3)}`, width * 0.15, top);
-        // g.font = Math.floor(fontSize / 2) + "px consolas,monospace";
-        // g.fillStyle = "#228B22";
-        // //g.fillText(`Teleport`, width*0.82, top+height*0.1);
-        g.font = Math.floor(fontSize) + "px consolas,monospace"
-    
-        if (G.teleportThreshold >= 0.75) {
-            if (G.teleportStatus !== "High") {
-                g.fillStyle = "#FF0000";
-                g.fillText(`High`, width*0.82, top+height*0.25);
-                G.teleportStatus = "High";
-            }
-        } else if (G.teleportThreshold >= 0.5) {
-            if (G.teleportStatus !== "Moderate") {
-                g.fillStyle = "#FF4500";
-                g.fillText(`Moderate`, width*0.82, top+height*0.25);
-                G.teleportStatus = "Moderate";
-            }
-        } else if (G.teleportThreshold >= 0.25) {
-            if (G.teleportStatus !== "Low") {
-                g.fillStyle = "#FF0000";
-                g.fillText(`Low`, width*0.82, top+height*0.25);
-                G.teleportStatus = "Low";
-            }
-        } else {
-            if (G.teleportStatus !== "Very Low") {
-                g.fillStyle = "#008000";
-                g.fillText(`Very Low`, width*0.82, top+height*0.25);
-                G.teleportStatus = "Very Low";
-            }
-        }
-    
-        g.fillStyle = "#8eff55";
-        g.fillText(` x${G.numBoosts}`, width * 0.4, top + height * 0.33);
-    
-        if (G.objects.hero.fuelCell == null && distance(G.objects.hero.x, G.objects.hero.z, G.objects.rock.rock.x, G.objects.rock.rock.z) <= 7) {
-            g.fillText(`Press spacebar to pick up rock`, width * 0.33, top-100);
-        }
-    
-        if (G.objects.hero.fuelCell == G.objects.rock.rock && G.objects.hero.isCollide(G.objects.target)) {
-            g.fillText(`Drop the rock first!`, width * 0.33, top-100);
-        }
-    
-        g.lineWidth = 8;
-        g.strokeStyle = 'yellow';
-        g.rect(width-(0.070 * width), top + (0.020 * width), width*0.05, height*0.5);
-        g.stroke();
-        if (G.fireAttackAmmo > 0) {
-            g.fillStyle = "#FF4500";
-        } else {
-            g.fillStyle = "#FFF";
-        }
-        g.fill();
-        g.drawImage(G.fireBallImage, width-(0.070 * width), top + (0.020 * width), width *0.05, height*0.5);
-    
+    if (G.objects.hero.fuelCell == null && distance(G.objects.hero.x, G.objects.hero.z, G.objects.rock.rock.x, G.objects.rock.rock.z) <= 7) {
+        g.fillText(`Press spacebar to pick up rock`, width * 0.33, top-100);
     }
 
-    //FPS display
-    g.font = fontSize + "px consolas,monospace";
-    g.fillStyle = "#FFF";
-    g.fillText(` ${G.fps.display}`, 20, 20, 100, 100);
+    if (G.objects.hero.fuelCell == G.objects.rock.rock && G.objects.hero.isCollide(G.objects.target)) {
+        g.fillText(`Drop the rock first!`, width * 0.33, top-100);
+    }
 
 
 }
@@ -1168,11 +1092,6 @@ function draw3d() {
         G.objects.booster3.show();
         G.objects.booster4.show();
         G.objects.rats && G.objects.rats.show(G.gameSpin);
-
-        for (const key in G.objects.fireAttacks.attacks) {
-            G.objects.fireAttacks.attacks[key] && G.objects.fireAttacks.attacks[key].show(G.gameSpin);    //added code
-        }
-
         if (G.objects.rocket.rocket && G.objects.rocket.rocket.inMotion()) { //rock is off the ground so spin it
             G.objects.rocket.rocket.show(G.gameSpin);
         } else {
